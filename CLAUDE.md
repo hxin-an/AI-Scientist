@@ -58,7 +58,7 @@ ai_scientist/
 ├── agents/       — LangGraph nodes（planner, researcher, writer, conciliator）
 ├── harness/      — Graph 組裝、State schema、hooks、熔斷器
 ├── reviewer/     — 5-stage 研究價值 pipeline
-├── sentinel/     — 本地 LLM 監控（Qwen 2.5 Coder，同一台機器）
+├── sentinel/     — 本地 LLM 監控，三職責：Watchdog（session 存活）+ Z-score（metric 發散）+ HiTL 預判
 ├── evolution/    — DSPy+GEPA prompt 優化、失敗分類
 ├── memory/       — 3-tier 記憶體（hot/warm/cold）
 ├── tools/        — 所有外部 API 的唯一入口（Claude tool schema）

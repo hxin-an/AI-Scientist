@@ -14,7 +14,7 @@
 | **系統** | 狀態管理 | Git-centric + PostgreSQL (LangGraph PostgresSaver) |
 | **系統** | 記憶體 | 3-tier: hot (context) / warm (filesystem+RAG) / cold (vector DB) |
 | **系統** | 實驗環境 | Docker container，tmux in container，非 host |
-| **LLM** | 主模型 | Claude Sonnet（複雜）/ Haiku（簡單路由） |
+| **LLM** | 主模型 | Claude Code CLI（agent 本身，非 API 呼叫） |
 | **LLM** | 本地 Sentinel | Qwen 2.5 Coder，依 VRAM 分層：3B / 7B / 14B |
 | **LLM** | Reviewer 評審 | DeepReviewer-14B Fast Mode |
 | **流程** | Pipeline | Planner → Researcher → Reviewer (5-stage) → Writer |
@@ -90,11 +90,10 @@ ai_scientist/
 │   │   ├── hot.py                  # In-context management
 │   │   ├── warm.py                 # Filesystem RAG
 │   │   └── cold.py                 # Vector DB (cold storage)
-│   ├── tools/                      # Claude tool schema 定義（唯一外部 API 入口）
+│   ├── tools/                      # Claude Code 可呼叫的工具函數（唯一外部 API 入口）
 │   │   ├── literature.py           # S2AG + OpenAlex + ArXiv
 │   │   ├── docker_runner.py        # Experiment container 控制
-│   │   ├── git_ops.py              # Git commit / revert / log
-│   │   └── claude_api.py           # Claude API wrapper
+│   │   └── git_ops.py              # Git commit / revert / log
 │   ├── monitoring/                 # 系統健康度
 │   │   ├── metrics.py              # Prometheus metrics export
 │   │   ├── health.py               # /health endpoint + GPU DCGM
@@ -209,14 +208,19 @@ ai_scientist/
 
 ### 3.5 Sentinel 監控
 
-**FR-17** Sentinel 模型依 VRAM 分層選型（KB-03）：
-- < 4GB：Qwen 2.5 Coder 3B
-- 4–12GB：Qwen 2.5 Coder 7B
-- > 12GB：Qwen 2.5 Coder 14B
+**FR-17** Sentinel 有三個明確職責：
+1. **Watchdog**：以獨立 process 監控 Claude Code session 是否意外終止或卡住，並嘗試自動重啟
+2. **Z-score 異常偵測**：監控實驗 metrics（loss、accuracy）是否發散，提早終止廢棄的實驗跑
+3. **HiTL 預判**：PARTIAL_FAIL 發生時，在轉交人工審查前先做可行性預評估，降低人工審查負擔
 
-**FR-18** 異常偵測採用混合式：EMA + Z-score（deterministic Python）先行，僅在 Z-score 觸發時呼叫 Sentinel LLM 做語義解讀（省 token）。
+**FR-18** Sentinel 模型依**可用 VRAM**（扣除實驗用量後剩餘）分層載入（KB-03）：
+- 可用 < 6GB：Qwen 2.5 Coder 3B（Watchdog + Z-score only）
+- 可用 6–12GB：Qwen 2.5 Coder 7B（Watchdog + Z-score + 基本 HiTL）
+- 可用 > 12GB：Qwen 2.5 Coder 14B（全功能）
 
-**FR-19** Sentinel 觸發後透過 LangGraph webhook 喚醒 orchestrator，payload 必須包含 `experiment_id`、`anomaly_type`、`metric_snapshot`。
+**FR-19** Z-score 異常偵測採用混合式：EMA + Z-score（deterministic Python）先行，僅在觸發時才載入 Sentinel LLM 做語義解讀，平時 Sentinel 盡量讓出 VRAM 給實驗。
+
+**FR-20** Sentinel 觸發後直接呼叫 Python callback 更新 LangGraph State，payload 必須包含 `experiment_id`、`anomaly_type`、`metric_snapshot`，不使用 HTTP webhook。
 
 ### 3.6 自我演進
 
@@ -252,13 +256,9 @@ ai_scientist/
 
 ### 4.1 成本控制
 
-**LLM-01** 模型分層路由：Planner 路由決策 → Haiku；Researcher / Writer 複雜生成 → Sonnet；論文複雜章節 Extended Thinking → Sonnet，budget 4k–8k tokens。
+**LLM-01** 系統以 Claude Code CLI 作為 agent，不直接呼叫 Anthropic API。成本由 Claude Code session 使用量決定。單次實驗的 session 成本目標 < $5；使用者可設定 budget cap，超出時系統暫停並通知。
 
-**LLM-02** Prompt caching 必須啟用。tool schema 順序必須固定（動態重排破壞 prefix cache）。
-
-**LLM-03** Context Firewall（KB-09）：任何會超過 40% context window 的子任務，必須委派給 sub-agent。Sub-agent 回傳 compressed summary + evidence contract（line-number citations），不回傳原始資料。
-
-**LLM-04** 單次實驗的 Claude API 成本目標 < $5。使用者可設定 budget cap；超出時系統暫停並通知。
+**LLM-02** Context Firewall（KB-09）：任何會超過 40% context window 的子任務，必須委派給 sub-agent。Sub-agent 回傳 compressed summary + evidence contract（line-number citations），不回傳原始資料。
 
 ### 4.2 可靠性
 
@@ -328,7 +328,7 @@ if steps > 15:  # hardcoded magic number
 
 **CODE-16** LangGraph graph 組裝必須在單一入口 `harness/graph.py` 完成。各 agent node 不得互相直接 import。
 
-**CODE-17** 所有外部 API 呼叫（Claude API、S2AG、Sentinel webhook）必須透過 `tools/` 封裝，不得在 agent node 內直接呼叫。
+**CODE-17** 所有外部 API 呼叫（S2AG、OpenAlex、Docker daemon）必須透過 `tools/` 封裝，不得在 agent node 內直接呼叫。
 
 ### 5.6 版本紀錄
 

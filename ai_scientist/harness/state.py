@@ -11,11 +11,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, TypedDict
 
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
-from typing_extensions import TypedDict
 
 
 # ---------------------------------------------------------------------------

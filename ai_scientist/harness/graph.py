@@ -20,6 +20,7 @@ import logging
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, START, StateGraph
 
+from ai_scientist.config.constants import MAX_EXPERIMENT_RETRIES
 from ai_scientist.harness.circuit_breaker import circuit_breaker_node, route_after_breaker
 from ai_scientist.harness.state import AIScientistState, ReviewStatus
 
@@ -87,8 +88,6 @@ async def _human_review_node(state: AIScientistState) -> dict:
 
 def route_after_researcher(state: AIScientistState) -> str:
     """Route after experiment: retry, escalate, or review."""
-    from ai_scientist.config.constants import MAX_EXPERIMENT_RETRIES
-
     if state["failure_count"] >= MAX_EXPERIMENT_RETRIES:
         return "escalate"
     if state["experiment_results"] is None:

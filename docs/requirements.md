@@ -1,6 +1,6 @@
 # AI Scientist System — Requirements
 
-**版本:** 0.2.0
+**版本:** 0.1.0
 **日期:** 2026-03-18
 **狀態:** Draft — 基於 KB-01 至 KB-10 全部完成後的整合版本
 
@@ -181,7 +181,7 @@ ai_scientist/
 
 **FR-09** 代碼執行失敗上限為 4 次（KB-01），超過則升級為人工干預。
 
-**FR-10** 實驗完成後必須輸出：論文草稿（LaTeX）、實驗代碼（clean）、超參數配置。
+**FR-10** 實驗完成後必須輸出：實驗代碼（clean）、超參數配置、metrics 原始記錄（trainer_state.json / CSVLogger）。論文草稿由 Writer 在 Reviewer 通過後生成，不在此階段產生。
 
 ### 3.4 Reviewer（5-stage pipeline）
 
@@ -222,33 +222,30 @@ ai_scientist/
 
 **FR-20** Sentinel 觸發後直接呼叫 Python callback 更新 LangGraph State，payload 必須包含 `experiment_id`、`anomaly_type`、`metric_snapshot`，不使用 HTTP webhook。
 
-### 3.6 自我演進
+### 3.6 文獻與論文生成
 
-**FR-20** Prompt 自動優化使用 DSPy + GEPA optimizer，優化信號為 3D composite：
-- `reproducibility_pass_rate`
-- `execution_stability_score`
-- `reviewer_quality_rubric`
+**FR-21** 文獻調查 pipeline：S2AG（主）→ OpenAlex（fallback）→ ArXiv（LaTeX source）。不使用 Papers With Code（已下線）。
 
-**FR-21** 每次 prompt mutation 前必須通過 golden dataset regression test（trace replay with stubbed external calls + LLM-as-Judge），失敗則拒絕 mutation。
+**FR-22** Citation pipeline 零幻覺：追蹤 S2 Paper ID → semantic_bibtool → BibTeX，LLM 不得自行生成 citation。
 
-**FR-22** Sentinel 模型升級必須走三階段：Shadow → A/B Testing（MAB routing）→ Canary（5%→25%→100%）。任一階段出現 latency / accuracy regression 自動 rollback。
-
-**FR-23** Failure taxonomy 必須分類為 4 層（KB-07），每層對應自動介入：
-- L1（生成：hallucination）→ GEPA prompt mutation
-- L2（資訊：tool/API gap）→ tool parameter swap via Command()
-- L3（協作：coordination loop）→ ServerRuntime 插入 Debugging Specialist 節點
-- L4（詮釋：goal drift）→ Meta-strategy FSM shift + goal-alignment verification
-
-### 3.7 文獻與論文生成
-
-**FR-24** 文獻調查 pipeline：S2AG（主）→ OpenAlex（fallback）→ ArXiv（LaTeX source）。不使用 Papers With Code（已下線）。
-
-**FR-25** Citation pipeline 零幻覺：追蹤 S2 Paper ID → semantic_bibtool → BibTeX，LLM 不得自行生成 citation。
-
-**FR-26** LaTeX 生成規則：
+**FR-23** LaTeX 生成規則：
 - LLM 不得修改 preamble
 - 以模組化 section 檔案組織（`\input{sections/method.tex}`）
 - Figures 由實驗代碼生成，不由 LLM 生成
+
+---
+
+## 3.x Phase 2 功能需求（MVP 不包含）
+
+### P2-FR-01 自我演進
+
+**P2-FR-01** Prompt 自動優化：針對 Claude Code 架構設計驗證機制（OQ-05），優化 `.claude/skills/` 文件，優化信號為 3D composite：`reproducibility_pass_rate` × `execution_stability_score` × `reviewer_quality_rubric`。
+
+**P2-FR-02** 每次 skills 文件 mutation 前必須通過 golden dataset regression test，失敗則拒絕 mutation。
+
+**P2-FR-03** Sentinel 模型升級走三階段：Shadow → A/B Testing → Canary（5%→25%→100%），任一階段出現 latency / accuracy regression 自動 rollback。
+
+**P2-FR-04** Failure taxonomy 分類為 4 層（KB-07），每層對應自動介入：L1（hallucination）→ prompt mutation；L2（tool gap）→ tool swap；L3（coordination loop）→ debug node；L4（goal drift）→ meta-strategy shift。
 
 ---
 
@@ -262,15 +259,15 @@ ai_scientist/
 
 ### 4.2 可靠性
 
-**LLM-05** 每個 agent 的 Pregel super-steps 上限為 15。超過觸發 L3 failure handler。
+**LLM-03** 每個 agent 的 Pregel super-steps 上限為 15。超過觸發人工升級。
 
-**LLM-06** Tool failure 時不得 crash graph。必須 format error 為可讀文字 → inject into context → 強制 agent 自我修正（12-Factor Factor 9，KB-09）。
+**LLM-04** Tool failure 時不得 crash graph。必須 format error 為可讀文字 → inject into context → 強制 agent 自我修正（12-Factor Factor 9，KB-09）。
 
 ### 4.3 安全性
 
-**LLM-07** 核心系統參數（budget caps、API scopes、prohibited actions）在 startup 時以 cryptographic read-only config 載入，agent 無法在 runtime 修改。
+**LLM-05** 核心系統參數（budget caps、prohibited actions）在 startup 時以 read-only config 載入，agent 無法在 runtime 修改。
 
-**LLM-08** Soft-limit 違規時使用 Guide() command 引導 agent 回到合規狀態，不得直接 crash graph。
+**LLM-06** Soft-limit 違規時引導 agent 回到合規狀態，不得直接 crash graph。
 
 ---
 

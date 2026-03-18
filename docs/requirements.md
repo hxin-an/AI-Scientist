@@ -419,12 +419,12 @@ ai-scientist health           # 呼叫 /health endpoint
 
 | 編號 | 限制 |
 |------|------|
-| CON-01 | 平台：Linux（Ubuntu 22.04+）為主。macOS 支援無 GPU 模式。不支援 Windows |
+| CON-01 | 平台：Windows（WSL2）/ Linux（Ubuntu 22.04+）同等支援。macOS 支援無 GPU 模式 |
 | CON-02 | GPU：RTX 30/40/90 系列。無 MIG 時使用 genv watchdog 做 VRAM partitioning |
 | CON-03 | 網路：Experiment Docker container 預設 `--network none`。主 orchestrator 需要對外網路 |
 | CON-04 | Python：3.11+。不支援 3.10 以下 |
 | CON-05 | 可安裝性：可透過 `pip install ai-scientist` 或 `uv add ai-scientist` 安裝 |
-| CON-06 | 成本：單次實驗 Claude API 成本目標 < $5。使用者可設定 budget cap |
+| CON-06 | 成本：單次實驗 Claude Code session 成本目標 < $5。使用者可設定 budget cap |
 | CON-07 | Docker：實驗 container 必須設定 `--memory-swap = --memory`（禁用 swap）、`--cap-drop=ALL`、custom seccomp |
 
 ---
@@ -433,26 +433,26 @@ ai-scientist health           # 呼叫 /health endpoint
 
 **MVP 包含：**
 - 完整 Planner → Researcher → Reviewer（5-stage）→ Writer pipeline
-- Sentinel 監控（基本 anomaly detection + 喚醒 webhook）
+- Sentinel 監控（Watchdog + Z-score anomaly detection + HiTL 預判）
 - Git-centric state + LangGraph PostgresSaver（multi-day recovery）
 - Docker experiment sandbox
 - Prometheus metrics export + `/health` endpoint
-- 基本 self-evolution（prompt mutation + golden dataset regression，簡化版 DSPy optimizer）
 - CLI 人工審查 interface（PARTIAL_FAIL queue）
 
-**MVP 不包含（未來版本）：**
+**MVP 不包含（Phase 2）：**
+- 自我演進（DSPy+GEPA / skills 文件優化）— 機制需要針對 Claude Code 架構重新設計
 - Discord bot HiTL 整合
-- 完整 GEPA Pareto optimizer（MVP 用 simpler DSPy optimizer）
-- 三階段模型升級 rollout（MVP 用 manual promotion）
-- Packaging / pip release（MVP 用 `pip install -e .`）
+- Sentinel 三階段模型升級 rollout（MVP 用 manual promotion）
+- Packaging / pip release（MVP 用 `uv pip install -e .`）
 
 ---
 
 ## 10. 未解決問題 (Open Questions)
 
-| # | 問題 | 影響範圍 | 優先級 |
-|---|------|---------|--------|
-| OQ-01 | PostgreSQL 要 self-hosted 還是支援 managed (RDS/Cloud SQL)？ | 安裝複雜度 | 中 |
-| OQ-02 | PARTIAL_FAIL 人工審查 UI 第一版：CLI 還是 simple web dashboard？ | FR-14 | 高 |
-| OQ-03 | Experiment output retention policy？硬碟空間管理？ | 實驗目錄大小 | 低 |
-| OQ-04 | Multi-user 共享 GPU 環境的 isolation 策略（genv namespace 還是 systemd slice）？ | CON-02 | 中 |
+| # | 問題 | 影響範圍 | 優先級 | 狀態 |
+|---|------|---------|--------|------|
+| OQ-01 | PostgreSQL 要 self-hosted 還是支援 managed (RDS/Cloud SQL)？ | 安裝複雜度 | 中 | ✅ Local |
+| OQ-02 | PARTIAL_FAIL 人工審查 UI 第一版：CLI 還是 simple web dashboard？ | FR-14 | 高 | ✅ CLI + interrupt() |
+| OQ-03 | Experiment output retention policy？硬碟空間管理？ | 實驗目錄大小 | 低 | 未解決 |
+| OQ-04 | Multi-user 共享 GPU 環境的 isolation 策略（genv namespace 還是 systemd slice）？ | CON-02 | 中 | 未解決 |
+| OQ-05 | 自我演進機制在 Claude Code 架構下如何運作（skills 文件優化的驗證機制）？ | Phase 2 | 低 | Phase 2 前解決 |

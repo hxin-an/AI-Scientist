@@ -1,0 +1,16 @@
+# Normalize line endings: LF in repo, auto-convert on checkout
+* text=auto eol=lf
+
+# Force LF for scripts
+*.sh text eol=lf
+*.py text eol=lf
+
+# Force CRLF for Windows-only files (none currently)
+
+# Binary files
+*.png binary
+*.jpg binary
+*.pdf binary
+*.pt  binary
+*.pth binary
+*.ckpt binary

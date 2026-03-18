@@ -11,6 +11,31 @@
 
 ---
 
+## 執行模型（重要）
+
+```
+Claude Code（你）IS the agent。
+Python 程式碼 = 工具 + 狀態管理 + routing 邏輯。
+不需要呼叫 Anthropic API。不需要 API key。
+```
+
+角色分工：
+- **Claude Code** — 讀 CLAUDE.md + `.claude/skills/`，執行研究任務，呼叫 Python tools
+- **Python package** — 提供工具（literature search, docker runner, git ops...）和狀態（LangGraph + PostgreSQL）
+- **LangGraph** — 管理 State、Checkpoint、Routing（純 Python 邏輯，不調用 LLM）
+
+執行流程：
+```
+使用者啟動 Claude Code
+  → Claude Code 讀 CLAUDE.md（全域規則）
+  → Claude Code 讀對應的 .claude/skills/（任務細節）
+  → Claude Code 呼叫 ai_scientist/ 裡的工具函數
+  → 工具函數更新 LangGraph State（寫入 PostgreSQL）
+  → Claude Code 根據 State 決定下一步
+```
+
+---
+
 ## 每次 Session 開始：Mandatory Orientation
 
 在執行任何 task 之前，必須按順序完成：

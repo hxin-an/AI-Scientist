@@ -22,10 +22,9 @@ class Settings(BaseSettings):
     # --- PostgreSQL (local, see OQ-04 decision) ---
     postgres_url: str = "postgresql://ai_scientist:ai_scientist@localhost:5432/ai_scientist"
 
-    # --- Claude API ---
-    anthropic_api_key: str = ""
-    claude_sonnet_model: str = "claude-sonnet-4-6"
-    claude_haiku_model: str = "claude-haiku-4-5-20251001"
+    # Note: No Anthropic API key here.
+    # Intelligence is provided by Claude Code (the CLI), not the Python SDK.
+    # Claude Code reads CLAUDE.md + .claude/skills/ and calls tools defined in this package.
 
     # --- Sentinel (local Qwen 2.5 Coder, same machine) ---
     sentinel_model_dir: str = "./models/sentinel"

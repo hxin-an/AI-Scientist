@@ -9,10 +9,10 @@ description = "Automated Deep Learning research pipeline: idea to paper draft"
 requires-python = ">=3.11"
 dependencies = [
     # Orchestration
+    # Note: intelligence is Claude Code (CLI), not the Python SDK.
+    # LangGraph provides state management, checkpointing, and routing only.
     "langgraph>=0.2.0",
     "langgraph-checkpoint-postgres>=1.0.0",
-    # LLM
-    "anthropic>=0.40.0",
     # Schemas / validation
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
